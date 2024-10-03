@@ -7,5 +7,5 @@ public enum UserStatus
     Inactive,
     Cancelled,
     Pending,
-    Close
+    Closed
 }

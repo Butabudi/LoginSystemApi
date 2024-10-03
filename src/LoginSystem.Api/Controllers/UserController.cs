@@ -1,5 +1,4 @@
 using AutoMapper;
-using Azure.Core;
 using FluentValidation;
 using LoginSystem.Api.Constants;
 using LoginSystem.Api.Controllers.Base;
@@ -113,40 +112,18 @@ public class UserController(IMediator mediator, ILogger<UserController> logger, 
             }
         );
     }
-    
+
     /// <summary>
     ///     Delete a user
     /// </summary>
     /// <returns></returns>
-
+    // TODO : still need some work
     [HttpDelete]
-    public async Task<IActionResult> Delete()
+    public async Task<IActionResult> Delete(
+        [FromQuery] DeleteIndividualUserRequest request,
+        [FromServices] IValidator<DeleteIndividualUserRequest> validator
+    )
     {
-
-        return null;
-    }
-
-
-    /// <summary>
-    ///     Delete pending users that stalled beyond the expected time frame.
-    /// </summary>
-    /// <returns></returns>
-
-    [HttpDelete("DeleteOverdueApplication")]
-    public async Task<IActionResult> DeletePendingUser()
-    {
-
-        return null;
-    }
-
-
-    [HttpPatch]
-    public async Task<IActionResult> UpdateUser(
-        [FromBody] UpdateRegistrationStatusRequest  request,
-        [FromServices] IValidator<UpdateRegistrationStatusRequest> validator,
-        CancellationToken cancellationToken)
-    {
-
         var validationResult = await validator.ValidateAsync(request);
 
         if (!validationResult.IsValid)
@@ -154,12 +131,53 @@ public class UserController(IMediator mediator, ILogger<UserController> logger, 
             return ValidationError(validationResult);
         }
 
+        var result = await mediator.Send(new DeleteIndividualUserCommand(request));
+
+        return result.ToActionResult(
+            Ok,
+            exception => exception switch
+            {
+                NotFoundException => Problem(
+                    result.Exception?.Message,
+                    errorCode: ErrorCodes.NotFoundError,
+                    statusCode: StatusCodes.Status400BadRequest
+                ),
+                _ => Problem(result.Exception?.Message)
+            }
+        );
+    }
+
+
+    /// <summary>
+    ///     Delete pending users that stalled beyond the expected time frame.
+    /// </summary>
+    /// <returns></returns>
+    // TODO : still need some work
+    [HttpDelete("DeleteOverdueApplication")]
+    public async Task<IActionResult> DeletePendingUser()
+    {
+        return null;
+    }
+
+    // TODO : still need some work
+    [HttpPatch]
+    public async Task<IActionResult> UpdateUser(
+        [FromBody] UpdateRegistrationStatusRequest request,
+        [FromServices] IValidator<UpdateRegistrationStatusRequest> validator,
+        CancellationToken cancellationToken
+    )
+    {
+        var validationResult = await validator.ValidateAsync(request);
+
+        if (!validationResult.IsValid)
+        {
+            return ValidationError(validationResult);
+        }
 
         var result = await mediator.Send(new UpdateRegistrationStatusCommand(request));
 
-
         return result.ToActionResult(
-            item => Created(nameof(UpdateUser), item),
+            Ok,
             exception => exception switch
             {
                 DuplicatedValueException duplicatedValueException => Problem(
@@ -169,7 +187,7 @@ public class UserController(IMediator mediator, ILogger<UserController> logger, 
                 ),
                 NotFoundException => Problem(
                     result.Exception?.Message,
-                    errorCode: ErrorCodes.NoSuchOrganisationError,
+                    errorCode: ErrorCodes.NotFoundError,
                     statusCode: StatusCodes.Status400BadRequest
                 ),
                 _ => Problem(result.Exception?.Message)
@@ -177,5 +195,3 @@ public class UserController(IMediator mediator, ILogger<UserController> logger, 
         );
     }
 }
-
-
