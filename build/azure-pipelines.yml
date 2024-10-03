@@ -1,0 +1,104 @@
+# NOTE: This azure-pipelines file is for **Cloud DevOps**
+name: $(Date:yy).$(Date:MM).$(Date:dd).$(Rev:r)
+
+trigger:
+- none
+
+pool:
+  vmImage: ubuntu-latest
+  
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Booster/Reference-Templates
+      ref: main
+
+parameters:
+  - name: publishImage
+    displayName: "Build/Publish Image to the Container Registry"
+    type: boolean
+    default: "false"
+  - name: imageVersion
+    displayName: "The version tag for deployment. This won't be effective when the publish image is checked."
+    type: string
+    default: $(Build.BuildNumber)
+
+variables:
+  - group: AKS-NonProd-Config
+  - group: Nuget-Feed-Endpoints
+  - name: solutionPath
+    value: LoginSystemApi/LoginSystemApi.sln
+  - name: imageName
+    value: booster/login/api
+  - name: imageDisplayName
+    value: $[lower(replace(variables['imageName'],'/','-'))]
+  - ${{ if eq(parameters.publishImage, true) }}:
+    - name: deploymentTag
+      value: $(Build.BuildNumber)
+  - ${{ if eq(parameters.publishImage, false) }}:
+    - name: deploymentTag
+      value: ${{parameters.imageVersion}}
+  - name: dockerFilePath
+    value: LoginSystemApi/Dockerfile
+  - name: dockerBuildContext
+    value: LoginSystemApi/
+  - name: manifestPath
+    value: LoginSystemApi/manifests
+  - name: ingressPath
+    value: /login/api/(.*)
+  - name: nugetPath
+    value: LoginSystemApi/.nuget/NuGet.Config
+  - name: dotNetVersion
+    value: "8.0.x"
+
+stages:
+  - stage: BuildTestAndPublish
+    displayName: "Build, Test & Publish"
+    jobs:
+      - ${{ if eq(parameters.publishImage, true) }}:
+        - job: BuildAndTestSolution
+          displayName: "Build & Test Solution"
+          steps:
+            - template: pipelines/common/buildAndTest-Solution.yml@templates
+              parameters:
+                solution: $(solutionPath)
+                buildNumber: $(deploymentTag)
+                feedToUse: "config"
+                nugetPath: $(nugetPath)
+                dotNetVersion: $(dotNetVersion)
+        - job: BuildAndPublishImage
+          displayName: "Build & Publish Image to NonProd ACR"
+          steps:
+            - template: pipelines/common/buildAndPush-DockerContainer.yml@templates
+              parameters:
+                containerRegistryName: $(AcrName)
+                imageName: $(imageName)
+                dockerfilePath: $(dockerFilePath)
+                buildNumber: $(deploymentTag)
+                buildContext: $(dockerBuildContext)
+                feedEndpoint: $(Booster-Feed-Endpoint)
+      - job: PublishArtifacts
+        displayName: "Publish Artifacts"
+        steps:
+          - task: CopyFiles@2
+            displayName: "Copy the Manifest files"
+            inputs:
+              SourceFolder: "LoginSystemApi/"
+              Contents: "manifests/*.yml"
+              TargetFolder: "$(Build.ArtifactStagingDirectory)"
+          - task: PublishBuildArtifacts@1
+            displayName: "Publish Manifest files"
+            inputs:
+              PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+              ArtifactName: "drop"
+              publishLocation: Container
+  - template: pipelines/aks/deployToAksV2.yml@templates
+    parameters: 
+      imageName: ${{variables.imageName}}
+      deploymentTag: ${{variables.deploymentTag}}
+      workloadType: "app"
+      manifestPath: ${{variables.manifestPath}}
+      imageDisplayName: ${{variables.imageDisplayName}}
+      healthProbePath: "/health"
+      ingressPath: ${{variables.ingressPath}}
