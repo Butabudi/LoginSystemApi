@@ -9,10 +9,6 @@ public class UpdateRegistrationStatusRequest
 
     public UserStatus UserStatus { get; set; }
 
-    public DateTime? DateUpdated { get; set; }
-
-    public DateTime? DateClosed { get; set; }
-
     public string? UpdatedBy { get; set; }
 }
 

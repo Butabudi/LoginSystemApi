@@ -35,6 +35,7 @@ public class UpdateRegistrationStatusCommandHandler(
             return new NotFoundException();
         }
 
+        // mapper is more cleaner
         user.UserStatus = request.UpdateRegistrationStatusRequest.UserStatus;
         user.LastUpdated = DateTime.Now;
         user.UpdatedBy = request.UpdateRegistrationStatusRequest.UpdatedBy;
