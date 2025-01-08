@@ -1,5 +1,6 @@
 using AutoMapper;
 using LoginSystem.Api.Exceptions;
+using LoginSystem.Api.Extensions;
 using LoginSystem.Api.Handlers.Responses;
 using LoginSystem.Api.Models.Request;
 using LoginSystem.Api.Models.Response;
@@ -25,13 +26,17 @@ public class UpdateRegistrationStatusCommandHandler(
     )
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(
-            x => x.UserId == request.UpdateRegistrationStatusRequest.UserId,
+            x => x.UserName == request.UpdateRegistrationStatusRequest.UserName,
             cancellationToken
         );
 
         if (user == null)
         {
-            logger.LogError("Requested UserId for {UserId} does not exist.", user.UserId);
+            logger.LogError(
+                "Requested UserName for {UserName} or email address {EmailAddress} does not exist.",
+                user.UserName,
+                user.EmailAddress
+            );
             return new NotFoundException();
         }
 
@@ -39,11 +44,12 @@ public class UpdateRegistrationStatusCommandHandler(
         user.UserStatus = request.UpdateRegistrationStatusRequest.UserStatus;
         user.LastUpdated = DateTime.Now;
         user.UpdatedBy = request.UpdateRegistrationStatusRequest.UpdatedBy;
+        user.Password = PasswordHashExtensions.PasswordHash(request.UpdateRegistrationStatusRequest.Password);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
-            "Status updated for user id {UserId} with user status of {Status}.",
-            user.UserId,
+            "Status updated for username {UserName} with user status of {Status}.",
+            user.UserName,
             user.UserStatus
         );
 

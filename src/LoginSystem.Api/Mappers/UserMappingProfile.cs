@@ -22,16 +22,15 @@ public class UserMappingProfile : Profile
         CreateMap<User, SearchUserResponse>();
 
         CreateMap<User, UpdateRegistrationStatusRequest>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.UserStatus, opt => opt.MapFrom(src => src.UserStatus));
-            // .ForMember(dest => dest.DateUpdated, opt => opt.MapFrom(src => src.LastUpdated));
+            .ForMember(dest => dest.Password, opt => opt.MapFrom(src => src.Password))
+            .ForMember(dest => dest.UserStatus, opt => opt.MapFrom(src => src.UserStatus))
+            .ForMember(dest => dest.UpdatedBy, opt => opt.MapFrom(src => src.UpdatedBy));
 
         CreateMap<User, DeleteIndividualUserResponse>();
 
         CreateMap<User, UpdateRegistrationStatusResponse>()
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId));
-        // .ForMember(dest=>dest.)
 
-
+        CreateMap<UpdateRegistrationStatusResponse, User>();
     }
 }

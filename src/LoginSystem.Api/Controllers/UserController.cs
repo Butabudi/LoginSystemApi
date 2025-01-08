@@ -160,6 +160,14 @@ public class UserController(IMediator mediator, ILogger<UserController> logger, 
     }
 
     // TODO : still need some work
+
+    /// <summary>
+    ///     Update password of user
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="validator"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpPatch]
     public async Task<IActionResult> UpdateUser(
         [FromBody] UpdateRegistrationStatusRequest request,
